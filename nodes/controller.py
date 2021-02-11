@@ -8,6 +8,7 @@ import sys
 import time
 import json
 import requests
+from socketIO_client import SocketIO, LoggingNamespace
 import node_funcs
 
 LOGGER = polyinterface.LOGGER
@@ -22,46 +23,45 @@ class Controller(polyinterface.Controller):
         self.primary = self.address
         self.roku_list = {}
         self.in_config = False
-        self.in_discover = False
+        self.configured = False
+
+        self.params = node_funcs.NSParameters([{
+            'name': 'IP Address',
+            'default': 'set volumio IP address',
+            'isRequired': True,
+            'notice': 'IP address/name must be set'
+            } ])
 
         self.poly.onConfig(self.process_config)
 
     # Process changes to customParameters
     def process_config(self, config):
-        rediscover = False
-        if self.in_config:
-            return
-
-        self.in_config = True
-        if 'customParams' in self.polyConfig:
-            for roku_name in self.polyConfig['customParams']:
-                LOGGER.info('found ' + roku_name + ' with ip ' + self.polyConfig['customParams'][roku_name])
-                if roku_name not in self.roku_list:
-                    address = self.polyConfig['customParams'][roku_name]
-                    node_id = 'roku_' + address.split('.')[3]
-
-                    self.roku_list[roku_name] = {'ip':address, 'configured':False, 'node_id':node_id, 'apps':None }
-                    rediscover = True
-
-        if rediscover:
-            self.discover()
-
-        self.in_config = False
+        (valid, changed) = self.params.update_from_polyglot(config)
+        if changed and not valid:
+            self.removeNoticesAll()
+            self.params.send_notices(self)
+        elif changed and valid:
+            self.removeNoticesAll()
+            self.configured = True
+        elif valid:
+            LOGGER.debug('CFG: configuration is valid')
 
     def start(self):
         LOGGER.info('Starting node server')
 
         self.set_logging_level()
         self.check_params()
-        self.discover()
+        #self.discover()
+
+        while not self.configured:
+            time.sleep(5)
+
+        self.start_client(self.params.get('IP Address'))
 
         LOGGER.info('Node server started')
 
     def longPoll(self):
-        for node in self.nodes:
-            if self.nodes[node].address != self.address:
-                LOGGER.debug('Polling ' + node)
-                self.nodes[node].longPoll()
+        pass
 
     def shortPoll(self):
         pass
@@ -70,83 +70,29 @@ class Controller(polyinterface.Controller):
         for node in self.nodes:
             self.nodes[node].reportDrivers()
 
-    # Create the nodes for each device configured and query
-    # to get the list of installed applications.  
+    # TODO: is there anything we need to discover?
     def discover(self, *args, **kwargs):
-        if self.in_discover:
-            return
-
-        self.in_discover = True
-        LOGGER.info("In Discovery...")
-        for rk in self.roku_list:
-            LOGGER.debug(self.roku_list[rk])
-            if self.roku_list[rk]['configured']:
-                LOGGER.info('Roku ' + rk + ' already configured, skipping.')
-                self.in_discover = False
-                return
-
-            # query app list from roku
-            LOGGER.info('query ' + self.roku_list[rk]['ip'])
-            nls_map = {}
-            try:
-                r = requests.get('http://' + self.roku_list[rk]['ip'] + ":8060/query/apps")
-                tree = ElementTree.fromstring(r.content)
-                #LOGGER.info(r.content)
-                cnt = 1
-                for child in tree.iter('*'):
-                    if (child.tag == 'app'):
-                        # Create a map of applications on this roku
-                        name = child.text.replace('&', 'and')
-                        LOGGER.debug(name + ', ' + child.attrib['id'])
-
-                        nls_map[child.attrib['id']] = (name, cnt)
-                        cnt = cnt + 1
-
-                nls_map['0'] = ("Screensaver", 0)
-
-                self.roku_list[rk]['configured'] = True
-                self.roku_list[rk]['apps'] = nls_map
-            except:
-                LOGGER.error('Query failed for ' + self.roku_list[rk]['ip'])
-
-        profile.write_nls(LOGGER, self.roku_list)
-        profile.write_nodedef(LOGGER, self.roku_list)
-        self.update_profile(None)
-
-        # Create the nodes
-        for rk in self.roku_list:
-            rd = self.roku_list[rk]
-            node = roku_node.RokuNode(self, self.address, rd['node_id'], rk, rd['ip'], rd['apps'])
-            self.addNode(node)
-
-        self.in_discover = False
+        pass
 
     # Delete the node server from Polyglot
     def delete(self):
+        sio.disconnect()
         LOGGER.info('Removing node server')
 
     def stop(self):
+        sio.disconnect()
         LOGGER.info('Stopping node server')
 
     def update_profile(self, command):
         st = self.poly.installprofile()
         return st
 
-    # Look at what's configured and create the list of
-    # Roku devices.
     def check_params(self):
-        if 'customParams' in self.polyConfig:
-            for roku_name in self.polyConfig['customParams']:
-                LOGGER.info('found ' + roku_name + ' with ip ' + self.polyConfig['customParams'][roku_name])
-                if roku_name not in self.roku_list:
-                    address = self.polyConfig['customParams'][roku_name]
-                    node_id = 'roku_' + address.split('.')[3]
-
-                    self.roku_list[roku_name] = {'ip':address, 'configured':False, 'node_id':node_id, 'apps':None }
-        else:
-            LOGGER.error('config not found')
-
         self.removeNoticesAll()
+        if self.params.get_from_polyglot(self):
+            self.configured = True
+        else:
+            self.params.send_notices(self)
 
     def remove_notices_all(self, command):
         self.removeNoticesAll()
@@ -166,6 +112,30 @@ class Controller(polyinterface.Controller):
         LOGGER.setLevel(level)
         self.setDriver('GV0', level)
 
+    def start_client(self, ip):
+        self.sio = SocketIO(ip, 3000)
+        self.sio.on('connect', self.on_connect)
+        self.sio.on('disconnect', self.on_disconnect)
+        self.sio.on('pushState', self.on_pushState)
+        self.sio.on('pushState', self.on_pushState)
+        self.sio.on('pushBrowseSources', self.on_pushState)
+
+        # gets the current state
+        self.sio.emit('getState', '')
+        self.sio.wait(seconds=10)
+
+        # gets the list of sources
+        self.sio.emit('getBrowseSources', '')
+        self.sio.wait(seconds=10)
+
+    def on_connect(self):
+        LOGGER.error('Connected to websocket interface')
+
+    def on_disconnect(self):
+        LOGGER.error('Connection to websocket interfaced dropped.')
+
+    def on_pushState(self, data):
+        LOGGER.error('Got message: {}'.format(data))
 
     commands = {
             'DISCOVER': discover,
