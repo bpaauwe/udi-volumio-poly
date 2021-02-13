@@ -5,7 +5,7 @@
     "executable": "volumio.py",
     "install": "install.sh",
     "description": "Add support of Volumio media servers to the ISY994",
-    "notice": "see http://www.volumio.org for more information",
+    "notice": "See http://www.volumio.org for more information",
     "shortPoll": "5",
     "longPoll": "60",
     "profile_version": "1.0.0",

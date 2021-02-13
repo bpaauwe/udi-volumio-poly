@@ -35,7 +35,7 @@ The settings for this node are:
    * Not used
 
 #### Volumio IP Address
-   * The IP address (or name) of the Volumio player.  Note that this can't do Bonjour type name resolution so names like 'volumio.local' won't work.
+   * The IP address (or name) of the Volumio player.
 
 
 ## Requirements
