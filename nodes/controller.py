@@ -8,8 +8,11 @@ import sys
 import time
 import json
 import requests
+import threading
 from socketIO_client import SocketIO, LoggingNamespace
 import node_funcs
+import write_nls
+from nodes import myserver
 
 LOGGER = polyinterface.LOGGER
 
@@ -24,6 +27,8 @@ class Controller(polyinterface.Controller):
         self.roku_list = {}
         self.in_config = False
         self.configured = False
+        self.server = None
+        self.sources = []
 
         self.params = node_funcs.NSParameters([{
             'name': 'IP Address',
@@ -51,11 +56,12 @@ class Controller(polyinterface.Controller):
 
         self.set_logging_level()
         self.check_params()
-        #self.discover()
 
         while not self.configured:
+            LOGGER.error('Waiting for configuration')
             time.sleep(5)
 
+        LOGGER.error('Start client now')
         self.start_client(self.params.get('IP Address'))
 
         LOGGER.info('Node server started')
@@ -70,17 +76,67 @@ class Controller(polyinterface.Controller):
         for node in self.nodes:
             self.nodes[node].reportDrivers()
 
-    # TODO: is there anything we need to discover?
+    """
+    TODO:
+
+    Discover sources.  Browse the root and pull out the components we
+    want to use as source.  I think this will result in favorites,
+    spotify and pandora.  The get the list of playlist and add those
+    to the sources list.
+
+    Once we have the list of sources, use that to generate the NLS entries.
+
+    Ideally, only do this if either the list doesn't exist or the user runs
+    the discover command manually.
+
+    Thus, we should save the list in CustomData so we should check that before
+    running discover from start.
+
+    Do we want to allow custom sources?  we could have the user enter the uri
+    value in the custom params for custom sources and add those to the list.
+    """
     def discover(self, *args, **kwargs):
-        pass
+        src_cnt = 0
+        self.sources = []
+        root = self.send_command('browse')
+        for src in root['navigation']['lists']:
+            LOGGER.error('Found {}'.format(src['uri']))
+            if src['uri'] == 'favourites':
+                self.sources.append({'name': 'Favourites', 'uri': 'favourites'})
+            elif src['uri'] == '/pandora':
+                #TODO: Look up pandora stations
+                stations = self.send_command('browse', 'uri=/pandora')
+                sl = stations['navigation']['lists'][0]['items']
+                for s in sl:
+                    LOGGER.debug('found: {} {}'.format(s['name'], s['uri']))
+                    self.sources.append({'name': s['name'], 'uri': s['uri']})
+            elif src['uri'] == '/spotify':
+                self.sources.append({'name': 'Spotify', 'uri': '/spotify'})
+
+        playlists = self.send_command('listplaylists')
+        for play in playlists:
+            LOGGER.error('Found {}'.format(play))
+            self.sources.append({'name': play, 'uri': 'playplaylist'})
+
+        #TODO: Create and write out NLS with this source list
+        write_nls.write_nls(LOGGER, self.sources)
+        self.poly.installprofile()
+
+        #Save source list to customData
+        if 'customData' in self.polyConfig:
+            customdata = self.polyConfig['customData']
+        else:
+            customdata = {}
+        customdata['sourceList'] = self.sources
+        self.poly.saveCustomData(customdata)
 
     # Delete the node server from Polyglot
     def delete(self):
-        sio.disconnect()
         LOGGER.info('Removing node server')
 
     def stop(self):
-        sio.disconnect()
+        self.server.Stop = True
+        self.server.socket.close()
         LOGGER.info('Stopping node server')
 
     def update_profile(self, command):
@@ -98,6 +154,7 @@ class Controller(polyinterface.Controller):
         self.removeNoticesAll()
 
     def set_logging_level(self, level=None):
+        return
         if level is None:
             try:
                 level = self.get_saved_log_level()
@@ -108,45 +165,161 @@ class Controller(polyinterface.Controller):
         else:
             level = int(level['value'])
 
+        level = 10
         LOGGER.info('Setting log level to %d' % level)
         LOGGER.setLevel(level)
         self.setDriver('GV0', level)
 
+
+    def send_command(self, command, value=None):
+        cmds = ['play', 'toggle', 'stop', 'pause', 'prev', 'next', 'clearQueue']
+        cmdv = ['playplaylist', 'repeat', 'random', 'volume']
+
+        url = self.params.get('IP Address') + '/api/v1/'
+        if command in cmds:
+            url += 'commands?cmd=' + command
+        elif command in cmdv:
+            url += 'commands?cmd=' + command + '&' + value
+        else:
+            if value is not None:
+                url += command + '?' + value
+            else:
+                url += command
+
+        LOGGER.debug('sending: {}'.format(url))
+        c = requests.get(url)
+        LOGGER.debug('send_command retuned: {}'.format(c.text))
+        try:
+            jdata = c.json()
+        except Exception as e:
+            LOGGER.error('GET {} failed: {}'.format(url, c.text))
+            jdata = ''
+        c.close()
+
+        return jdata
+
+    def post_request(self, command, body):
+        url = self.params.get('IP Address') + '/api/v1/' + command
+
+        c = requests.post(url, json=body)
+
+        try:
+            jdata = c.json()
+        except Exception as e:
+            LOGGER.error('GET {} failed: {}'.format(url, c.text))
+            jdata = ''
+        c.close()
+
+        return jdata
+
+    """
+      Use replaceAndPlay to add items to the queue or replace what's
+      currently playing with something new.
+
+      This will probably be used to select things like Pandora or a
+      playlist or is it just used to add individual tracks?
+    """
+    def replaceAndPlay(self):
+        pass
+
+
+    def web_server(self):
+        """
+        Notifications:
+          Send a post to pushNotificationsUrls?url=<our server process>
+        """
+        try:
+            self.server = myserver.Server(('', 8383), myserver.VHandler)
+            self.server.serve_forever(self)
+        except Exception as e:
+            LOGGER.error('web server failed: {}'.format(e))
+
     def start_client(self, ip):
-        self.sio = SocketIO(ip, 3000)
-        self.sio.on('connect', self.on_connect)
-        self.sio.on('disconnect', self.on_disconnect)
-        self.sio.on('pushState', self.on_pushState)
-        self.sio.on('pushState', self.on_pushState)
-        self.sio.on('pushBrowseSources', self.on_pushState)
+        LOGGER.error('Status: {}'.format(self.send_command('getState')))
 
-        # gets the current state
-        self.sio.emit('getState', '')
-        self.sio.wait(seconds=10)
+        if 'customData' in self.polyConfig:
+            if 'sourceList' in self.polyConfig['customData']:
+                self.sources = self.polyConfig['customData']['sourceList']
+                for src in self.sources:
+                    LOGGER.debug('Restoring source: {}'.format(src))
 
-        # gets the list of sources
-        self.sio.emit('getBrowseSources', '')
-        self.sio.wait(seconds=10)
+        if len(self.sources) == 0:
+            LOGGER.error('Calling discover')
+            self.discover()
 
-    def on_connect(self):
-        LOGGER.error('Connected to websocket interface')
+        LOGGER.error('Starting notification server')
+        self.notification_thread = threading.Thread(target = self.web_server)
+        self.notification_thread.daemon = True
+        self.notification_thread.start()
 
-    def on_disconnect(self):
-        LOGGER.error('Connection to websocket interfaced dropped.')
+        LOGGER.error('network = {}'.format(self.poly.network_interface))
+        address = self.poly.network_interface['addr']
+        url = 'http://' + address + ':8383/volumiostatus'
+        self.post_request('pushNotificationUrls', {"url": url})
 
-    def on_pushState(self, data):
-        LOGGER.error('Got message: {}'.format(data))
+        LOGGER.error('{}'.format(self.send_command('pushNotificationUrls')))
+
+    def process_cmd(self, cmd=None):
+        LOGGER.error('ISY sent: {}'.format(cmd))
+        if cmd is not None:
+            if cmd['cmd'] == 'PLAY':
+                self.send_command('play')
+            elif cmd['cmd'] == 'PAUSE':
+                self.send_command('pause')
+            elif cmd['cmd'] == 'NEXT':
+                self.send_command('next')
+            elif cmd['cmd'] == 'PREV':
+                self.send_command('prev')
+            elif cmd['cmd'] == 'STOP':
+                self.send_command('stop')
+            elif cmd['cmd'] == 'VOLUME':
+                self.send_command('volume', 'volume=' + cmd['value'])
+            elif cmd['cmd'] == 'SHUFFLE':
+                if cmd['value'] == 0:
+                    value = 'false'
+                else:
+                    value = 'true'
+                self.send_command('random', 'value=' + value)
+            elif cmd['cmd'] == 'REPEAT':
+                if cmd['value'] == 0:
+                    value = 'false'
+                else:
+                    value = 'true'
+                self.send_command('repeat', 'value=' + value)
+            elif cmd['cmd'] == 'SOURCE':
+                LOGGER.debug('selected source now = {}'.format(cmd['value']))
+                idx = int(cmd['value'])
+                try:
+                    src = self.sources[idx]
+                    LOGGER.debug('Found source entry {}'.format(src))
+                except:
+                    LOGGER.debug('Index {} not found in {}'.format(idx, self.sources))
 
     commands = {
             'DISCOVER': discover,
             'REMOVE_NOTICES_ALL': remove_notices_all,
             'UPDATE_PROFILE': update_profile,
             'DEBUG': set_logging_level,
+            'VOLUME': process_cmd,
+            'SOURCE': process_cmd,
+            'PLAY': process_cmd,
+            'PAUSE': process_cmd,
+            'SHUFFLE': process_cmd,
+            'REPEAT': process_cmd,
+            'PREV': process_cmd,
+            'NEXT': process_cmd,
             }
 
     drivers = [
             {'driver': 'ST', 'value': 1, 'uom': 2},   # node server status
             {'driver': 'GV0', 'value': 0, 'uom': 25}, # Log Level
+            {'driver': 'GV1', 'value': 0, 'uom': 25}, # Source
+            {'driver': 'SVOL', 'value': 0, 'uom': 56}, # Volume
+            {'driver': 'GV2', 'value': 0, 'uom': 56}, # duration
+            {'driver': 'GV3', 'value': 0, 'uom': 56}, # remaining
+            {'driver': 'GV4', 'value': 0, 'uom': 56}, # shuffle
+            {'driver': 'GV5', 'value': 0, 'uom': 56}, # repeat
+            {'driver': 'GV6', 'value': 0, 'uom': 25}, # play/pause
             ]
 
     

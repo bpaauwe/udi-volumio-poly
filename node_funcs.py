@@ -63,6 +63,7 @@ def set_logging_level(self, level=None):
 
     self.save_log_level(level)
 
+    level = 10
     LOGGER.info('set_logging_level: Setting log level to %d' % level)
     LOGGER.setLevel(level)
 
