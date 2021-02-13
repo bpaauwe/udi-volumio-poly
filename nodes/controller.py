@@ -10,6 +10,7 @@ import json
 import requests
 import threading
 from socketIO_client import SocketIO, LoggingNamespace
+import dns.resolver
 import node_funcs
 import write_nls
 from nodes import myserver
@@ -29,6 +30,7 @@ class Controller(polyinterface.Controller):
         self.configured = False
         self.server = None
         self.sources = []
+        self.ip_address = ''
 
         self.params = node_funcs.NSParameters([{
             'name': 'IP Address',
@@ -58,11 +60,23 @@ class Controller(polyinterface.Controller):
         self.check_params()
 
         while not self.configured:
-            LOGGER.error('Waiting for configuration')
+            LOGGER.debug('Waiting for configuration')
             time.sleep(5)
 
-        LOGGER.error('Start client now')
-        self.start_client(self.params.get('IP Address'))
+        if self.params.get('IP Address').endswith('local'):
+            myres = dns.resolver.Resolver()
+            myres.nameservers = ['224.0.0.251']
+            myres.port = 5353
+            try:
+                ip = myres.resolve(self.params.get('IP Address'), 'A')
+                self.ip_address = 'http://' + ip[0].to_text()
+            except:
+                self.ip_address = 'http://' + self.params.get('IP Address')
+        else:
+            self.ip_address = 'http://' + self.params.get('IP Address')
+
+        LOGGER.info('Start client now with {}'.format(self.ip_address))
+        self.start_client(self.ip_address)
 
         LOGGER.info('Node server started')
 
@@ -175,7 +189,7 @@ class Controller(polyinterface.Controller):
         cmds = ['play', 'toggle', 'stop', 'pause', 'prev', 'next', 'clearQueue']
         cmdv = ['playplaylist', 'repeat', 'random', 'volume']
 
-        url = self.params.get('IP Address') + '/api/v1/'
+        url = self.ip_address + '/api/v1/'
         if command in cmds:
             url += 'commands?cmd=' + command
         elif command in cmdv:
@@ -199,7 +213,7 @@ class Controller(polyinterface.Controller):
         return jdata
 
     def post_request(self, command, body):
-        url = self.params.get('IP Address') + '/api/v1/' + command
+        url = self.ip_address + '/api/v1/' + command
 
         c = requests.post(url, json=body)
 
