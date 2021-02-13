@@ -222,6 +222,27 @@ class Controller(polyinterface.Controller):
     def replaceAndPlay(self):
         pass
 
+    def status(self, info, force=False):
+        LOGGER.debug('Setting initial status')
+        self.setDriver('SVOL', int(info['volume']), True, force)
+        self.setDriver('DUR', int(info['duration']), True, force)
+        if info['status'].lower() == 'stop':
+            self.setDriver('MODE', 0, True, force)
+        elif info['status'].lower() == 'play':
+            self.setDriver('MODE', 1, True, force)
+        else:
+            self.setDriver('MODE', 2, True, force)
+
+        if info['random']:
+            self.setDriver('GV4', 1, True, force)
+        else:
+            self.setDriver('GV4', 0, True, force)
+
+        if info['repeat']:
+            self.setDriver('GV5', 1, True, force)
+        else:
+            self.setDriver('GV5', 0, True, force)
+
 
     def web_server(self):
         """
@@ -258,6 +279,12 @@ class Controller(polyinterface.Controller):
         self.post_request('pushNotificationUrls', {"url": url})
 
         LOGGER.error('{}'.format(self.send_command('pushNotificationUrls')))
+
+        # Get current status
+        info = self.send_command('getState')
+        self.status(info, True)
+
+
 
     def process_cmd(self, cmd=None):
         LOGGER.error('ISY sent: {}'.format(cmd))
@@ -315,11 +342,11 @@ class Controller(polyinterface.Controller):
             {'driver': 'GV0', 'value': 0, 'uom': 25}, # Log Level
             {'driver': 'GV1', 'value': 0, 'uom': 25}, # Source
             {'driver': 'SVOL', 'value': 0, 'uom': 56}, # Volume
-            {'driver': 'GV2', 'value': 0, 'uom': 56}, # duration
-            {'driver': 'GV3', 'value': 0, 'uom': 56}, # remaining
+            {'driver': 'DUR', 'value': 0, 'uom': 56}, # duration
+            {'driver': 'TIMEREM', 'value': 0, 'uom': 56}, # remaining
             {'driver': 'GV4', 'value': 0, 'uom': 56}, # shuffle
             {'driver': 'GV5', 'value': 0, 'uom': 56}, # repeat
-            {'driver': 'GV6', 'value': 0, 'uom': 25}, # play/pause
+            {'driver': 'MODE', 'value': 0, 'uom': 25}, # play/pause
             ]
 
     

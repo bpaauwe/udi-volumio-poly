@@ -45,24 +45,7 @@ class VHandler(http.server.BaseHTTPRequestHandler):
             LOGGER.debug('Play  :  {}'.format(info['status']))
             if self.ctlnode is not None:
                 LOGGER.debug('Setting control node drivers')
-                self.ctlnode.setDriver('SVOL', int(info['volume']))
-                self.ctlnode.setDriver('DUR', int(info['duration']))
-
-                if info['status'] == 'play':
-                    self.ctlnode.setDriver('MODE', 0)
-                else:
-                    self.ctlnode.setDriver('MODE', 1)
-
-                if info['random'] == 'True':
-                    self.ctlnode.setDriver('GV4', 1)
-                else:
-                    self.ctlnode.setDriver('GV4', 0)
-
-                if info['repeat'] == 'None':
-                    self.ctlnode.setDriver('GV5', 0)
-                else:
-                    self.ctlnode.setDriver('GV5', 1)
-
+                self.ctlnode.status(info)
 
         self.respond()
 
