@@ -167,24 +167,6 @@ class Controller(polyinterface.Controller):
     def remove_notices_all(self, command):
         self.removeNoticesAll()
 
-    def set_logging_level(self, level=None):
-        return
-        if level is None:
-            try:
-                level = self.get_saved_log_level()
-            except:
-                LOGGER.error('unable to get saved log level.')
-        if level is None:
-            level = 30
-        else:
-            level = int(level['value'])
-
-        level = 10
-        LOGGER.info('Setting log level to %d' % level)
-        LOGGER.setLevel(level)
-        self.setDriver('GV0', level)
-
-
     def send_command(self, command, value=None):
         cmds = ['play', 'toggle', 'stop', 'pause', 'prev', 'next', 'clearQueue']
         cmdv = ['playplaylist', 'repeat', 'random', 'volume']
@@ -367,11 +349,14 @@ class Controller(polyinterface.Controller):
                 except:
                     LOGGER.debug('Index {} not found in {}'.format(idx, self.sources))
 
+    def set_log(self, level=None):
+        self.set_logging_level(level)
+
     commands = {
             'DISCOVER': discover,
             'REMOVE_NOTICES_ALL': remove_notices_all,
             'UPDATE_PROFILE': update_profile,
-            'DEBUG': set_logging_level,
+            'DEBUG': set_log,
             'VOLUME': process_cmd,
             'SOURCE': process_cmd,
             'PLAY': process_cmd,
