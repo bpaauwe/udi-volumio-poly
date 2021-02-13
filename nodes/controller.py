@@ -333,6 +333,37 @@ class Controller(polyinterface.Controller):
                 try:
                     src = self.sources[idx]
                     LOGGER.debug('Found source entry {}'.format(src))
+                    # what are the different playback mechinims. 
+                    #   pandora or spotify
+                    #   favorites
+                    #   playlists
+                    self.send_command('stop')
+                    self.send_command('clearQueue')
+                    if 'pandora' in src['uri']:
+                        self.send_command('browse', 'uri=' + src['uri'])
+                        self.send_command('repeat', 'value=false')
+                        self.send_command('random', 'value=false')
+                        self.send_command('next')
+                        self.send_command('play')
+                    elif 'spotify' in src['uri']:
+                        self.send_command('browse', 'uri=' + src['uri'])
+                        self.send_command('repeat', 'value=false')
+                        self.send_command('random', 'value=false')
+                        self.send_command('next')
+                        self.send_command('play')
+                    elif src['name'] == 'Favourites':
+                        self.send_command('browse', 'uri=' + src['uri'])
+                        self.send_command('repeat', 'value=false')
+                        self.send_command('random', 'value=true')
+                        self.send_command('play')
+                    else: # playlist
+                        self.send_command('playplaylist', 'name=' + src['name'])
+                        self.send_command('repeat', 'value=false')
+                        self.send_command('random', 'value=true')
+                        self.send_command('next')
+                        self.send_command('play')
+
+                    self.setDriver('GV1', idx, True)
                 except:
                     LOGGER.debug('Index {} not found in {}'.format(idx, self.sources))
 
