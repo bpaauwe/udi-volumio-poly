@@ -7,16 +7,16 @@
 		<range uom="25" min="0" max="1" nls="SOURCE" />
 	</editor>
 	<editor id="MODE">
-		<range uom="25" min="0" max="1" nls="MODE" />
+		<range uom="25" min="0" max="2" nls="MODE" />
 	</editor>
 	<editor id="SWITCH">
 		<range uom="25" min="0" max="1" nls="SWITCH" />
 	</editor>
 	<editor id="VOLUME">
-		<range uom="56" min="0" max="100" />
+		<range uom="12" min="0" max="100" />
 	</editor>
 	<editor id="TIME">
-		<range uom="56" min="0" max="100" />
+		<range uom="58" min="0" max="100" />
 	</editor>
 	<editor id="DEBUG">
 		<range uom="25" subset="0,10,20,30,40,50" nls="DBG" />

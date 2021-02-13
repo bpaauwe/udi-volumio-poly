@@ -229,9 +229,9 @@ class Controller(polyinterface.Controller):
         if info['status'].lower() == 'stop':
             self.setDriver('MODE', 0, True, force)
         elif info['status'].lower() == 'play':
-            self.setDriver('MODE', 1, True, force)
-        else:
             self.setDriver('MODE', 2, True, force)
+        else:
+            self.setDriver('MODE', 1, True, force)
 
         if info['random']:
             self.setDriver('GV4', 1, True, force)
@@ -338,15 +338,15 @@ class Controller(polyinterface.Controller):
             }
 
     drivers = [
-            {'driver': 'ST', 'value': 1, 'uom': 2},   # node server status
-            {'driver': 'GV0', 'value': 0, 'uom': 25}, # Log Level
-            {'driver': 'GV1', 'value': 0, 'uom': 25}, # Source
-            {'driver': 'SVOL', 'value': 0, 'uom': 56}, # Volume
-            {'driver': 'DUR', 'value': 0, 'uom': 56}, # duration
-            {'driver': 'TIMEREM', 'value': 0, 'uom': 56}, # remaining
-            {'driver': 'GV4', 'value': 0, 'uom': 56}, # shuffle
-            {'driver': 'GV5', 'value': 0, 'uom': 56}, # repeat
-            {'driver': 'MODE', 'value': 0, 'uom': 25}, # play/pause
+            {'driver': 'ST', 'value': 1, 'uom': 2},       # node server status
+            {'driver': 'GV0', 'value': 0, 'uom': 25},     # Log Level
+            {'driver': 'GV1', 'value': 0, 'uom': 25},     # Source
+            {'driver': 'SVOL', 'value': 0, 'uom': 12},    # Volume
+            {'driver': 'DUR', 'value': 0, 'uom': 58},     # duration
+            {'driver': 'TIMEREM', 'value': 0, 'uom': 58}, # remaining
+            {'driver': 'GV4', 'value': 0, 'uom': 25},     # shuffle
+            {'driver': 'GV5', 'value': 0, 'uom': 25},     # repeat
+            {'driver': 'MODE', 'value': 0, 'uom': 25},    # play/pause
             ]
 
     

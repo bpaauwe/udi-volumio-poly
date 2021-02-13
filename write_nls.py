@@ -51,8 +51,9 @@ def write_nls(logger, source_list):
         nls.write("SWITCH-0 = Off\n")
         nls.write("SWITCH-1 = On\n")
         nls.write("\n")
-        nls.write("MODE-0 = Paused\n")
-        nls.write("MODE-1 = Playing\n")
+        nls.write("MODE-0 = Stopped\n")
+        nls.write("MODE-1 = Paused\n")
+        nls.write("MODE-2 = Playing\n")
         nls.write("\n")
 
         cnt = 0

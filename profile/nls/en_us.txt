@@ -30,7 +30,8 @@ DBG-50 = Critical
 SWITCH-0 = Off
 SWITCH-1 = On
 
-MODE-0 = Paused
+MODE-0 = Stopped
+MODE-1 = Paused
 MODE-1 = Playing
 
 SOURCE-0 = needs configuration
