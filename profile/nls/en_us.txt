@@ -12,6 +12,7 @@ CMD-ctl-PREV-NAME = Previous
 CMD-ctl-NEXT-NAME = Next
 CMD-ctl-PLAY-NAME = Play
 CMD-ctl-PAUSE-NAME = Pause
+CMD-ctl-STOP-NAME = Stop
 CMD-ctl-VOLUME-NAME = Volume
 CMD-ctl-SHUFFLE-NAME = Shuffle
 CMD-ctl-REPEAT-NAME = Repeat
@@ -32,7 +33,7 @@ SWITCH-1 = On
 
 MODE-0 = Stopped
 MODE-1 = Paused
-MODE-1 = Playing
+MODE-2 = Playing
 
 SOURCE-0 = needs configuration
 SOURCE-1 = needs configuration
