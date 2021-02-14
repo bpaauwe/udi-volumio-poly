@@ -22,6 +22,7 @@
 		</cmd>
         <cmd id="PLAY" />
         <cmd id="PAUSE" />
+        <cmd id="STOP" />
         <cmd id="PREV" />
         <cmd id="NEXT" />
         <cmd id="SHUFFLE">

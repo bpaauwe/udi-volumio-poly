@@ -361,6 +361,7 @@ class Controller(polyinterface.Controller):
             'SOURCE': process_cmd,
             'PLAY': process_cmd,
             'PAUSE': process_cmd,
+            'STOP': process_cmd,
             'SHUFFLE': process_cmd,
             'REPEAT': process_cmd,
             'PREV': process_cmd,

@@ -33,6 +33,7 @@ def write_nls(logger, source_list):
         nls.write("CMD-ctl-NEXT-NAME = Next\n")
         nls.write("CMD-ctl-PLAY-NAME = Play\n")
         nls.write("CMD-ctl-PAUSE-NAME = Pause\n")
+        nls.write("CMD-ctl-STOP-NAME = Stop\n")
         nls.write("CMD-ctl-VOLUME-NAME = Volume\n")
         nls.write("CMD-ctl-SHUFFLE-NAME = Shuffle\n")
         nls.write("CMD-ctl-REPEAT-NAME = Repeat\n")
