@@ -51,5 +51,7 @@ the Volumio listing.  Click the "Update" button and the latest version of the Vo
 
 # Release Notes
 
+- 1.0.1 06/22/2021
+   - Include Socket-IO-client in requirements.txt
 - 1.0.0 02/15/2021
    - Initial version published to github

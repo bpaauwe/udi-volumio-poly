@@ -13,8 +13,8 @@
     	{
     		"title": "Volumio: A node server for Volumio Media Servers",
     		"author": "Bob Paauwe",
-    		"version": "1.0.0",
-    		"date": "February 10, 2021",
+    		"version": "1.0.1",
+    		"date": "June 22, 2021",
     		"source": "https://github.com/bpaauwe/udi-volumio-poly",
 			"license": "https://github.com/bpaauwe/udi-volumio-poly/LICENSE"
 		}
