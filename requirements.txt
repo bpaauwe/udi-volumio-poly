@@ -1,6 +1,8 @@
 polyinterface>=2.1.0
 requests>=2.0
+socketIO-client>=0.7.2
 python-socketio[client]>=5.0
 in_place>=0.4.0
 dnspython>=2.1.0
+
 
