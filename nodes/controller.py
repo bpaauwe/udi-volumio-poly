@@ -220,8 +220,10 @@ class Controller(polyinterface.Controller):
 
     def status(self, info, force=False):
         LOGGER.debug('Setting initial status')
-        self.setDriver('SVOL', int(info['volume']), True, force)
-        self.setDriver('DUR', int(info['duration']), True, force)
+        if 'volume' in info:
+            self.setDriver('SVOL', int(info['volume']), True, force)
+        if 'duration' in info:
+            self.setDriver('DUR', int(info['duration']), True, force)
         if info['status'].lower() == 'stop':
             self.setDriver('MODE', 0, True, force)
         elif info['status'].lower() == 'play':
